@@ -2,6 +2,7 @@
 
 import { useEffect } from 'react';
 import { useCartStore } from '@/store/cart';
+import { useCartSync } from '@/hooks/useCartSync';
 
 interface CartProviderProps {
   children: React.ReactNode;
@@ -9,6 +10,7 @@ interface CartProviderProps {
 
 export default function CartProvider({ children }: CartProviderProps) {
   const { migrateGuestCart } = useCartStore();
+  useCartSync();
 
   useEffect(() => {
     // Cart migration will be handled when the user logs in

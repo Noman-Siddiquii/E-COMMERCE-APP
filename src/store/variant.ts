@@ -2,13 +2,13 @@
 
 import { create } from "zustand";
 
-type State = {
+export type VariantState = {
   selectedByProduct: Record<string, number>;
   setSelected: (productId: string, index: number) => void;
   getSelected: (productId: string, fallback?: number) => number;
 };
 
-export const useVariantStore = create<State>((set, get) => ({
+export const useVariantStore = create<VariantState>((set, get) => ({
   selectedByProduct: {},
   setSelected: (productId, index) =>
     set((s) => ({

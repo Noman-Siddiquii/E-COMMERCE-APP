@@ -1,47 +1,20 @@
 import React from "react";
 import { Card } from "@/components";
-import {getCurrentUser} from "@/lib/auth/actions";
-
-const products = [
-  {
-    id: 1,
-    title: "Air Max Pulse",
-    subtitle: "Men's Shoes",
-    meta: "6 Colour",
-    price: 149.99,
-    imageSrc: "/shoes/shoe-1.jpg",
-    badge: { label: "New", tone: "orange" as const },
-  },
-  {
-    id: 2,
-    title: "Air Zoom Pegasus",
-    subtitle: "Men's Shoes",
-    meta: "4 Colour",
-    price: 129.99,
-    imageSrc: "/shoes/shoe-2.webp",
-    badge: { label: "Hot", tone: "red" as const },
-  },
-  {
-    id: 3,
-    title: "InfinityRN 4",
-    subtitle: "Men's Shoes",
-    meta: "6 Colour",
-    price: 159.99,
-    imageSrc: "/shoes/shoe-3.webp",
-    badge: { label: "Trending", tone: "green" as const },
-  },
-  {
-    id: 4,
-    title: "Metcon 9",
-    subtitle: "Men's Shoes",
-    meta: "3 Colour",
-    price: 139.99,
-    imageSrc: "/shoes/shoe-4.webp",
-  },
-];
+import { getCurrentUser } from "@/lib/auth/actions";
+import { getAllProducts } from "@/lib/actions/product";
 
 const Home = async () => {
   const user = await getCurrentUser();
+  
+  let productsData;
+  try {
+    productsData = await getAllProducts(); // No parameters needed now
+    console.log('PRODUCTS:', productsData);
+  } catch (error) {
+    console.error('Error fetching products:', error);
+    // Fallback to empty products if database fails
+    productsData = { products: [], totalCount: 0 };
+  }
 
   console.log('USER:', user);
 
@@ -52,18 +25,23 @@ const Home = async () => {
           Latest shoes
         </h2>
         <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {products.map((p) => (
-            <Card
-              key={p.id}
-              title={p.title}
-              subtitle={p.subtitle}
-              meta={p.meta}
-              imageSrc={p.imageSrc}
-              price={p.price}
-              badge={p.badge}
-              href={`/products/${p.id}`}
-            />
-          ))}
+          {productsData.products.length > 0 ? (
+            productsData.products.slice(0, 6).map((product) => (
+              <Card
+                key={product.id}
+                title={product.name}
+                subtitle={product.subtitle || "Shoes"}
+                meta={`${product.minPrice ? `From $${product.minPrice}` : "Price varies"}`}
+                imageSrc={product.imageUrl || "/shoes/shoe-1.jpg"}
+                price={product.minPrice || undefined}
+                href={`/products/${product.id}`}
+              />
+            ))
+          ) : (
+            <div className="col-span-full text-center py-12">
+              <p className="text-gray-500">No products available at the moment.</p>
+            </div>
+          )}
         </div>
       </section>
     </main>

@@ -6,3 +6,6 @@ export { default as SocialProviders } from "./SocialProviders";
 export { default as ProductGallery } from "./ProductGallery";
 export { default as SizePicker } from "./SizePicker";
 export { default as CollapsibleSection } from "./CollapsibleSection";
+export { default as CartContent } from "./CartContent";
+export { default as CartProvider } from "./CartProvider";
+export { default as AddToCartButton } from "./AddToCartButton";

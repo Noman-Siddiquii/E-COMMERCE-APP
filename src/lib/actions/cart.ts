@@ -48,7 +48,7 @@ export async function getOrCreateCart() {
     
     if (session?.user?.id) {
       // User is authenticated, get or create their cart
-      let userCart = await db.select().from(carts).where(eq(carts.userId, session.user.id));
+      const userCart = await db.select().from(carts).where(eq(carts.userId, session.user.id));
       
       if (userCart.length > 0) {
         // Get cart items with variant details

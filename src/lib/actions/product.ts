@@ -42,7 +42,7 @@ export type GetAllProductsResult = {
   totalCount: number;
 };
 
-export async function getAllProducts(filters: NormalizedProductFilters = {}): Promise<GetAllProductsResult> {
+export async function getAllProducts(filters: Partial<NormalizedProductFilters> = {}): Promise<GetAllProductsResult> {
   try {
     console.log('getAllProducts called with filters:', filters);
     
@@ -91,12 +91,11 @@ export async function getAllProducts(filters: NormalizedProductFilters = {}): Pr
     // Apply search filter
     if (filters.search && filters.search.trim()) {
       const searchPattern = `%${filters.search.trim()}%`;
-      baseConditions.push(
-        or(
-          ilike(products.name, searchPattern),
-          ilike(products.description, searchPattern)
-        )
-      );
+      const where = or(
+        ilike(products.name, searchPattern),
+        ilike(products.description, searchPattern)
+      ) as unknown as SQL;
+      baseConditions.push(where);
     }
     
     // Combine all conditions
@@ -123,7 +122,7 @@ export async function getAllProducts(filters: NormalizedProductFilters = {}): Pr
     // Get gender information for subtitle
     const genderMap = new Map<string, string>();
     if (rows.length > 0) {
-      const genderIds = rows.map(r => r.genderId).filter(Boolean);
+      const genderIds = rows.map(r => r.genderId).filter((x): x is string => Boolean(x));
       if (genderIds.length > 0) {
         const genderRows = await db
           .select({ id: genders.id, label: genders.label })

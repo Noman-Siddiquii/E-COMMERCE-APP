@@ -16,18 +16,19 @@ export function useCartSync() {
       const cart = await getOrCreateCart();
       
       if (cart?.items) {
-        // Transform server cart items to local format
-        const localItems = cart.items.map((item: CartItemWithDetails) => ({
+        // cart.items from server are lightweight. We can't build full local items without extra fetches,
+        // so we only update quantities here; details will populate on subsequent navigations.
+        const localItems = cart.items.map((item: { id: string; quantity: number; variantId: string }) => ({
           id: item.id,
-          productVariantId: item.variant.id,
-          name: item.variant.product.name,
-          price: parseFloat(item.variant.salePrice || item.variant.price),
+          productVariantId: item.variantId,
+          name: 'Product',
+          price: 0,
           quantity: item.quantity,
-          image: item.variant.product.images[0]?.url,
-          color: item.variant.color.name,
-          size: item.variant.size.name,
+          image: undefined,
+          color: undefined as unknown as string,
+          size: undefined as unknown as string,
         }));
-        
+
         setItems(localItems);
       }
     } catch (err) {

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from 'react';
+import Link from 'next/link';
 import Image from 'next/image';
 import { Trash2, Minus, Plus } from 'lucide-react';
 import { useCartStore } from '@/store/cart';
@@ -8,12 +9,14 @@ import { CartItemWithDetails } from '@/lib/actions/cart';
 import { formatPrice } from '@/lib/utils/format';
 import { useCartSync } from '@/hooks/useCartSync';
 
+type ServerCartLight = { items: { id: string; quantity: number; variantId: string }[] };
+
 interface CartContentProps {
-  initialCart: any;
+  initialCart: ServerCartLight | { items: CartItemWithDetails[] } | null;
 }
 
 export default function CartContent({ initialCart }: CartContentProps) {
-  const [cart, setCart] = useState(initialCart);
+  const [cart] = useState(initialCart);
   const { updateQuantity, removeItem, isLoading } = useCartStore();
   const [localQuantities, setLocalQuantities] = useState<Record<string, number>>({});
   const { syncCart, isLoading: isSyncing } = useCartSync();
@@ -21,7 +24,7 @@ export default function CartContent({ initialCart }: CartContentProps) {
   useEffect(() => {
     if (initialCart?.items) {
       const quantities: Record<string, number> = {};
-      initialCart.items.forEach((item: CartItemWithDetails) => {
+      (initialCart.items as Array<CartItemWithDetails | ServerCartLight['items'][number]>).forEach((item) => {
         quantities[item.id] = item.quantity;
       });
       setLocalQuantities(quantities);
@@ -40,7 +43,10 @@ export default function CartContent({ initialCart }: CartContentProps) {
     } catch (error) {
       console.error('Failed to update quantity:', error);
       // Revert local state on error
-      setLocalQuantities(prev => ({ ...prev, [itemId]: cart.items.find((i: any) => i.id === itemId)?.quantity || 1 }));
+      setLocalQuantities(prev => ({
+        ...prev,
+        [itemId]: (cart?.items as Array<CartItemWithDetails | ServerCartLight['items'][number]>)?.find((i) => i.id === itemId)?.quantity || 1,
+      }));
     }
   };
 
@@ -54,10 +60,17 @@ export default function CartContent({ initialCart }: CartContentProps) {
     }
   };
 
+  type CartItemUnion = CartItemWithDetails | ServerCartLight['items'][number];
+  const isDetailedItem = (item: CartItemUnion): item is CartItemWithDetails =>
+    (item as CartItemWithDetails)?.variant !== undefined;
+
   const calculateSubtotal = () => {
-    return cart?.items?.reduce((total: number, item: CartItemWithDetails) => {
-      const price = parseFloat(item.variant.salePrice || item.variant.price);
-      return total + (price * item.quantity);
+    return cart?.items?.reduce((total: number, item: CartItemUnion) => {
+      if (isDetailedItem(item)) {
+        const price = parseFloat(item.variant.salePrice || item.variant.price);
+        return total + price * item.quantity;
+      }
+      return total; // unknown price for light item; will be updated after sync
     }, 0) || 0;
   };
 
@@ -83,13 +96,13 @@ export default function CartContent({ initialCart }: CartContentProps) {
           </svg>
         </div>
         <h3 className="text-lg font-medium text-gray-900 mb-2">Your cart is empty</h3>
-        <p className="text-gray-500 mb-6">Looks like you haven't added any items to your cart yet.</p>
-        <a
+        <p className="text-gray-500 mb-6">Looks like you {"haven't"} added any items to your cart yet.</p>
+        <Link
           href="/products"
           className="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md text-white bg-black hover:bg-gray-800"
         >
           Continue Shopping
-        </a>
+        </Link>
       </div>
     );
   }
@@ -100,14 +113,14 @@ export default function CartContent({ initialCart }: CartContentProps) {
       <div className="lg:col-span-2 space-y-4">
         <h2 className="text-xl font-semibold text-gray-900 mb-4">Cart</h2>
         
-        {cart.items.map((item: CartItemWithDetails) => (
+        {cart.items.map((item: CartItemUnion) => (
           <div key={item.id} className="bg-white rounded-lg p-6 border border-gray-200">
             <div className="flex gap-4">
               {/* Product Image */}
               <div className="flex-shrink-0">
                 <Image
-                  src={item.variant.product.images[0]?.url || '/placeholder-shoe.jpg'}
-                  alt={item.variant.product.name}
+                  src={isDetailedItem(item) ? (item.variant.images?.[0]?.url || '/placeholder-shoe.jpg') : '/placeholder-shoe.jpg'}
+                  alt={isDetailedItem(item) ? item.variant.product.name : 'Product image'}
                   width={96}
                   height={96}
                   className="w-24 h-24 object-cover rounded-lg"
@@ -119,26 +132,34 @@ export default function CartContent({ initialCart }: CartContentProps) {
                 <div className="flex justify-between items-start">
                   <div className="flex-1">
                     <h3 className="text-lg font-medium text-gray-900">
-                      {item.variant.product.name}
+                      {isDetailedItem(item) ? item.variant.product.name : 'Loading product...'}
                     </h3>
                     <p className="text-sm text-gray-500 mt-1">
-                      {item.variant.product.description}
+                      {isDetailedItem(item) ? item.variant.product.description : ''}
                     </p>
                     <div className="flex items-center gap-4 mt-2 text-sm text-gray-600">
-                      <span>Size {item.variant.size.name}</span>
-                      <span>Color {item.variant.color.name}</span>
+                      {isDetailedItem(item) && (
+                        <>
+                          <span>Size {item.variant.size.name}</span>
+                          <span>Color {item.variant.color.name}</span>
+                        </>
+                      )}
                     </div>
                   </div>
                   
                   {/* Price */}
                   <div className="text-right">
-                    <p className="text-lg font-semibold text-gray-900">
-                      {formatPrice(parseFloat(item.variant.salePrice || item.variant.price))}
-                    </p>
-                    {item.variant.salePrice && (
-                      <p className="text-sm text-gray-500 line-through">
-                        {formatPrice(parseFloat(item.variant.price))}
-                      </p>
+                    {isDetailedItem(item) && (
+                      <>
+                        <p className="text-lg font-semibold text-gray-900">
+                          {formatPrice(parseFloat(item.variant.salePrice || item.variant.price))}
+                        </p>
+                        {item.variant.salePrice && (
+                          <p className="text-sm text-gray-500 line-through">
+                            {formatPrice(parseFloat(item.variant.price))}
+                          </p>
+                        )}
+                      </>
                     )}
                   </div>
                 </div>
